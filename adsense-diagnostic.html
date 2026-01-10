@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdSense Diagnostic - "Sponsored" Shows But No Ads</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1a1a1a;
+            margin-top: 0;
+        }
+        h2 {
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+        .status.critical {
+            background: #fee;
+            border-left: 4px solid #dc2626;
+            color: #991b1b;
+        }
+        .status.warning {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+        .status.success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+        .status.info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .step {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #6366f1;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #4f46e5;
+        }
+        ol, ul {
+            line-height: 1.8;
+        }
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .checklist {
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .checklist li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 AdSense Diagnostic: "Sponsored" Shows But No Ads</h1>
+        <p><strong>Your Situation:</strong> The "Sponsored" label appears, but the ad space is empty.</p>
+
+        <div class="status info">
+            <strong>✅ Good News:</strong> Your integration IS working - the AdSense script is loading and running.
+            The issue is that ads aren't <em>filling</em> the ad slots.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🎯 Run This Diagnostic Right Now</h2>
+
+        <div class="step">
+            <h3>Step 1: Open Your Live Site Console</h3>
+            <ol>
+                <li>Open your <strong>live deployed site</strong> (not localhost) in <strong>Incognito mode</strong></li>
+                <li>Press <strong>F12</strong> to open Developer Tools</li>
+                <li>Go to the <strong>Console</strong> tab</li>
+                <li>Paste this code and press Enter:</li>
+            </ol>
+
+            <div class="code-block">// AdSense Status Diagnostic
+const ads = document.querySelectorAll('.adsbygoogle');
+console.log('🔍 DIAGNOSTIC RESULTS:');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('Total ad slots:', ads.length);
+console.log('AdSense script loaded:', !!window.adsbygoogle);
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+ads.forEach((ad, i) => {
+  const status = ad.getAttribute('data-adsbygoogle-status');
+  const client = ad.getAttribute('data-ad-client');
+  const slot = ad.getAttribute('data-ad-slot');
+
+  console.log(`Ad #${i + 1}:`);
+  console.log('  Status:', status || 'NOT INITIALIZED');
+  console.log('  Client:', client);
+  console.log('  Slot:', slot);
+  console.log('  Dimensions:', ad.getBoundingClientRect().width + 'x' + ad.getBoundingClientRect().height);
+  console.log('');
+});
+
+// Check for errors
+const hasUnfilled = Array.from(ads).some(ad =>
+  ad.getAttribute('data-adsbygoogle-status') === 'unfilled'
+);
+const hasNoStatus = Array.from(ads).some(ad =>
+  !ad.getAttribute('data-adsbygoogle-status')
+);
+
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+if (hasNoStatus) {
+  console.log('❌ PROBLEM: Ads not initialized');
+  console.log('   → AdSense script may not be running');
+} else if (hasUnfilled) {
+  console.log('⚠️  ISSUE: Ads unfilled');
+  console.log('   → This is likely an AdSense account issue');
+} else {
+  console.log('✅ Ads should be showing (check if filled)');
+}
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');</div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Interpret The Results</h3>
+
+            <div class="status critical">
+                <strong>❌ If you see: "Status: NOT INITIALIZED"</strong><br>
+                <strong>Problem:</strong> AdSense script isn't pushing ads<br>
+                <strong>Fix:</strong> See "Fix #1" below
+            </div>
+
+            <div class="status warning">
+                <strong>⚠️ If you see: "Status: unfilled"</strong><br>
+                <strong>Problem:</strong> AdSense account or approval issue<br>
+                <strong>Fix:</strong> See "Fix #2" below
+            </div>
+
+            <div class="status success">
+                <strong>✅ If you see: "Status: filled"</strong><br>
+                <strong>Problem:</strong> Ads ARE working! Check browser/extensions<br>
+                <strong>Fix:</strong> Try different browser or disable extensions
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🔧 Fix #1: Ads Not Initializing</h2>
+
+        <div class="status critical">
+            <strong>Symptom:</strong> <code>data-adsbygoogle-status</code> is missing or empty after 10+ seconds
+        </div>
+
+        <p><strong>Root Cause:</strong> The AdSense script loads, but <code>(adsbygoogle).push({})</code> isn't being called properly.</p>
+
+        <h3>Verify Script is Loading</h3>
+        <p>In console, type: <code>window.adsbygoogle</code></p>
+        <ul>
+            <li>✅ If it shows <code>[]</code> or <code>[Object]</code> → Script loaded</li>
+            <li>❌ If it shows <code>undefined</code> → Script NOT loaded (CSP issue)</li>
+        </ul>
+
+        <h3>Check Network Tab</h3>
+        <ol>
+            <li>Go to <strong>Network</strong> tab in DevTools</li>
+            <li>Refresh page</li>
+            <li>Filter by: <code>adsbygoogle</code></li>
+            <li>Look for: <code>adsbygoogle.js</code> with <strong>Status: 200</strong></li>
+        </ol>
+
+        <div class="status info">
+            <strong>If script loads but ads don't initialize:</strong> This is usually a timing issue. The ad component mounts but the push() happens too early or the ref is wrong.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🔧 Fix #2: Ads "Unfilled" (Most Common After 7 Days)</h2>
+
+        <div class="status warning">
+            <strong>Symptom:</strong> <code>data-adsbygoogle-status="unfilled"</code>
+        </div>
+
+        <p><strong>Root Cause:</strong> AdSense initialized correctly, but Google couldn't fill the ad slot with an advertisement.</p>
+
+        <h3>Reason 1: AdSense Account Not Approved</h3>
+        <div class="checklist">
+            <strong>✅ Check Your AdSense Account Status:</strong>
+            <ol>
+                <li>Go to <a href="https://adsense.google.com" target="_blank">https://adsense.google.com</a></li>
+                <li>Sign in with the account linked to <code>ca-pub-9934433795401149</code></li>
+                <li>Look at the top banner - is your account approved?</li>
+                <li>Check email for approval status</li>
+            </ol>
+        </div>
+
+        <div class="status critical">
+            <strong>If account is NOT approved:</strong> You'll see mostly "unfilled" ads. This is normal! Approval can take 1-4 weeks. Once approved, ads will start showing.
+        </div>
+
+        <h3>Reason 2: Site Not Added to AdSense</h3>
+        <div class="checklist">
+            <strong>✅ Add Your Site to AdSense:</strong>
+            <ol>
+                <li>In AdSense Dashboard → Go to <strong>"Sites"</strong> in left menu</li>
+                <li>Click <strong>"Add site"</strong></li>
+                <li>Enter your domain (e.g., <code>your-app.netlify.app</code>)</li>
+                <li>Follow verification steps</li>
+            </ol>
+        </div>
+
+        <h3>Reason 3: Wrong Publisher ID</h3>
+        <p><strong>Your current ID:</strong> <code>ca-pub-9934433795401149</code></p>
+        <div class="checklist">
+            <strong>✅ Verify This Is YOUR ID:</strong>
+            <ol>
+                <li>Go to AdSense Dashboard</li>
+                <li>Click <strong>Account</strong> → <strong>Settings</strong></li>
+                <li>Find "Publisher ID"</li>
+                <li>Does it match <code>ca-pub-9934433795401149</code>?</li>
+            </ol>
+        </div>
+
+        <div class="status critical">
+            <strong>If IDs don't match:</strong> You're using someone else's publisher ID! Ads will never show. You need to update the code with YOUR publisher ID.
+        </div>
+
+        <h3>Reason 4: Low Fill Rate</h3>
+        <p>Even with an approved account, some ad slots may remain unfilled due to:</p>
+        <ul>
+            <li>Low traffic (not enough data for targeting)</li>
+            <li>Geographic location (fewer ads in some regions)</li>
+            <li>Content category (some niches have fewer ads)</li>
+            <li>Time of day (ad inventory varies)</li>
+        </ul>
+
+        <div class="status info">
+            <strong>Expected fill rate:</strong> 70-90% for news sites. If you see 10-30% after 7 days with approval, this is low but can improve with more traffic.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📊 Check AdSense Reports</h2>
+
+        <div class="step">
+            <h3>Most Important Check!</h3>
+            <ol>
+                <li>Go to <a href="https://adsense.google.com/reports" target="_blank">AdSense Reports</a></li>
+                <li>Select <strong>Last 7 days</strong></li>
+                <li>Look at these metrics:</li>
+            </ol>
+
+            <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                    <th style="padding: 12px; text-align: left;">Metric</th>
+                    <th style="padding: 12px; text-align: left;">What It Means</th>
+                    <th style="padding: 12px; text-align: left;">After 7 Days</th>
+                </tr>
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px;"><strong>Ad requests</strong></td>
+                    <td style="padding: 12px;">How many times your code asked for an ad</td>
+                    <td style="padding: 12px;">Should be > 0</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px;"><strong>Match rate</strong></td>
+                    <td style="padding: 12px;">% of requests that got matched with an ad</td>
+                    <td style="padding: 12px;">Should be 70-90%</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 12px;"><strong>Impressions</strong></td>
+                    <td style="padding: 12px;">Ads that actually showed to users</td>
+                    <td style="padding: 12px;">Should be > 0 if approved</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px;"><strong>Earnings</strong></td>
+                    <td style="padding: 12px;">Money made from ads</td>
+                    <td style="padding: 12px;">Could be $0-$10+ depending on traffic</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="status critical">
+            <strong>❌ If Ad requests = 0:</strong> Your code isn't reaching AdSense servers (CSP block or script error)
+        </div>
+
+        <div class="status warning">
+            <strong>⚠️ If Ad requests > 0, but Impressions = 0:</strong> Account not approved OR site not added
+        </div>
+
+        <div class="status success">
+            <strong>✅ If Impressions > 0:</strong> Ads ARE working! Check if ad blocker is on or test in different browser
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🎯 Quick Action Plan</h2>
+
+        <div class="step">
+            <h3>Do These 3 Things Right Now:</h3>
+
+            <div class="checklist">
+                <h4>✅ Action 1: Run the Console Diagnostic</h4>
+                <p>Copy the code from Step 1 above and paste in your live site console. Share the results.</p>
+            </div>
+
+            <div class="checklist">
+                <h4>✅ Action 2: Check AdSense Account Status</h4>
+                <p>Go to <a href="https://adsense.google.com" target="_blank">adsense.google.com</a> and answer:</p>
+                <ul>
+                    <li>Is your account approved? (Look for green checkmark or approval message)</li>
+                    <li>What status does it show? (Pending, Approved, Issues, etc.)</li>
+                    <li>Is your site listed in the "Sites" section?</li>
+                </ul>
+            </div>
+
+            <div class="checklist">
+                <h4>✅ Action 3: Check Reports</h4>
+                <p>In AdSense → Reports → Last 7 days, what numbers do you see for:</p>
+                <ul>
+                    <li><strong>Ad requests:</strong> _____</li>
+                    <li><strong>Impressions:</strong> _____</li>
+                    <li><strong>Earnings:</strong> _____</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🎬 Most Likely Scenario After 7 Days</h2>
+
+        <div class="status warning">
+            <strong>⚠️ Most Common Cause:</strong> AdSense account is still pending approval or site hasn't been added to your AdSense account.
+        </div>
+
+        <p><strong>Why:</strong> Even though your code is correct and deployed 7 days ago, if Google hasn't approved your account yet, ads will show as "unfilled".</p>
+
+        <p><strong>Timeline:</strong></p>
+        <ul>
+            <li><strong>Days 1-3:</strong> Account review in progress</li>
+            <li><strong>Days 3-7:</strong> Still reviewing (normal)</li>
+            <li><strong>Days 7-14:</strong> Most accounts approved</li>
+            <li><strong>14+ days:</strong> If still not approved, check for issues in dashboard</li>
+        </ul>
+
+        <div class="status info">
+            <strong>💡 What To Do:</strong> If your diagnostic shows "unfilled" and AdSense reports show "0 impressions", your integration is correct but you're waiting on Google approval. Continue monitoring your AdSense dashboard for approval status.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📞 Share These Results</h2>
+
+        <p>After running the diagnostic, share these 4 pieces of info:</p>
+
+        <div class="checklist">
+            <ol>
+                <li><strong>Console diagnostic results</strong> (filled/unfilled/not-initialized)</li>
+                <li><strong>AdSense account status</strong> (approved/pending/issues)</li>
+                <li><strong>Site added to AdSense?</strong> (yes/no)</li>
+                <li><strong>Ad requests from reports</strong> (number)</li>
+            </ol>
+        </div>
+
+        <p>With this info, we can determine if this is a code issue (fixable immediately) or an approval issue (need to wait for Google).</p>
+    </div>
+</body>
+</html>

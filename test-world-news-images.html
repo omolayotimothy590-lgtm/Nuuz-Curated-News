@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World News Image API Diagnostic</title>
+  <style>
+    body {
+      font-family: 'Monaco', 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #00ff00;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #00ffff;
+      border-bottom: 2px solid #00ffff;
+      padding-bottom: 10px;
+    }
+    .section {
+      background: #252525;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      border-left: 4px solid #00ff00;
+    }
+    .feed-url {
+      color: #ffff00;
+      word-break: break-all;
+    }
+    .status {
+      color: #ff00ff;
+      font-weight: bold;
+    }
+    button {
+      background: #00ff00;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin: 10px 5px;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #00ffff;
+    }
+    #output {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      font-size: 13px;
+    }
+    .image-info {
+      background: #2a2a2a;
+      padding: 15px;
+      margin: 10px 0;
+      border-left: 3px solid #ffff00;
+    }
+    .image-preview {
+      max-width: 100%;
+      height: auto;
+      margin-top: 10px;
+      border: 2px solid #00ff00;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌍 World News Image API Diagnostic Tool</h1>
+
+  <div class="section">
+    <h2>Purpose</h2>
+    <p>This tool inspects raw RSS/API responses from World News sources to identify all available image fields and their resolutions.</p>
+    <p><strong>World News Sources:</strong></p>
+    <ul>
+      <li>BBC News (https://feeds.bbci.co.uk/news/rss.xml)</li>
+      <li>NY Times World (https://rss.nytimes.com/services/xml/rss/nyt/World.xml)</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <button onclick="testBBCNews()">Test BBC News RSS</button>
+    <button onclick="testNYTimesWorld()">Test NY Times World RSS</button>
+    <button onclick="clearOutput()">Clear Output</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    const output = document.getElementById('output');
+
+    function log(message, type = 'info') {
+      const colors = {
+        info: '#00ff00',
+        warn: '#ffff00',
+        error: '#ff0000',
+        success: '#00ffff',
+        header: '#ff00ff'
+      };
+      const timestamp = new Date().toLocaleTimeString();
+      const line = document.createElement('div');
+      line.style.color = colors[type] || colors.info;
+      line.textContent = `[${timestamp}] ${message}`;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function clearOutput() {
+      output.innerHTML = '';
+    }
+
+    async function fetchWithProxy(url) {
+      const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        url
+      ];
+
+      for (const proxyUrl of proxies) {
+        try {
+          log(`Attempting: ${proxyUrl.substring(0, 60)}...`, 'info');
+          const response = await fetch(proxyUrl);
+          if (response.ok) {
+            log(`✓ Success with: ${proxyUrl.substring(0, 60)}...`, 'success');
+            return await response.text();
+          }
+        } catch (error) {
+          log(`✗ Failed: ${error.message}`, 'warn');
+        }
+      }
+      throw new Error('All fetch attempts failed');
+    }
+
+    function extractAllImageFields(itemXml, feedName) {
+      log(`\n${'='.repeat(60)}`, 'header');
+      log(`📰 Analyzing: ${feedName}`, 'header');
+      log(`${'='.repeat(60)}`, 'header');
+
+      const titleMatch = itemXml.match(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>|<title>([^<]+)<\/title>/);
+      const title = (titleMatch?.[1] || titleMatch?.[2] || 'No title').substring(0, 80);
+      log(`\n📝 Article: ${title}`, 'success');
+
+      // Extract all media:content tags
+      const mediaContentMatches = itemXml.match(/<media:content[^>]*>/gi) || [];
+      if (mediaContentMatches.length > 0) {
+        log(`\n📦 Found ${mediaContentMatches.length} media:content tag(s):`, 'success');
+        mediaContentMatches.forEach((tag, i) => {
+          const urlMatch = tag.match(/url=["']([^"']+)["']/i);
+          const widthMatch = tag.match(/width=["'](\d+)["']/i);
+          const heightMatch = tag.match(/height=["'](\d+)["']/i);
+          const mediumMatch = tag.match(/medium=["']([^"']+)["']/i);
+
+          log(`  Image ${i + 1}:`, 'info');
+          if (widthMatch && heightMatch) {
+            log(`    Size: ${widthMatch[1]} x ${heightMatch[1]} px`, 'success');
+          }
+          if (mediumMatch) {
+            log(`    Type: ${mediumMatch[1]}`, 'info');
+          }
+          if (urlMatch) {
+            log(`    URL: ${urlMatch[1]}`, 'info');
+          }
+        });
+      } else {
+        log('  ✗ No media:content tags found', 'warn');
+      }
+
+      // Extract all media:thumbnail tags
+      const mediaThumbnailMatches = itemXml.match(/<media:thumbnail[^>]*>/gi) || [];
+      if (mediaThumbnailMatches.length > 0) {
+        log(`\n📦 Found ${mediaThumbnailMatches.length} media:thumbnail tag(s):`, 'success');
+        mediaThumbnailMatches.forEach((tag, i) => {
+          const urlMatch = tag.match(/url=["']([^"']+)["']/i);
+          const widthMatch = tag.match(/width=["'](\d+)["']/i);
+          const heightMatch = tag.match(/height=["'](\d+)["']/i);
+
+          log(`  Thumbnail ${i + 1}:`, 'info');
+          if (widthMatch && heightMatch) {
+            log(`    Size: ${widthMatch[1]} x ${heightMatch[1]} px`, 'success');
+          }
+          if (urlMatch) {
+            log(`    URL: ${urlMatch[1]}`, 'info');
+          }
+        });
+      } else {
+        log('  ✗ No media:thumbnail tags found', 'warn');
+      }
+
+      // Extract enclosure tags
+      const enclosureMatches = itemXml.match(/<enclosure[^>]*>/gi) || [];
+      if (enclosureMatches.length > 0) {
+        log(`\n📦 Found ${enclosureMatches.length} enclosure tag(s):`, 'success');
+        enclosureMatches.forEach((tag, i) => {
+          const urlMatch = tag.match(/url=["']([^"']+)["']/i);
+          const typeMatch = tag.match(/type=["']([^"']+)["']/i);
+          const lengthMatch = tag.match(/length=["'](\d+)["']/i);
+
+          log(`  Enclosure ${i + 1}:`, 'info');
+          if (typeMatch) {
+            log(`    Type: ${typeMatch[1]}`, 'info');
+          }
+          if (lengthMatch) {
+            log(`    Size: ${(parseInt(lengthMatch[1]) / 1024).toFixed(0)} KB`, 'success');
+          }
+          if (urlMatch) {
+            log(`    URL: ${urlMatch[1]}`, 'info');
+          }
+        });
+      } else {
+        log('  ✗ No enclosure tags found', 'warn');
+      }
+
+      // Check description for images
+      const descMatch = itemXml.match(/<description><!\[CDATA\[([^\]]+)\]\]><\/description>|<description>([^<]+)<\/description>/);
+      const description = descMatch?.[1] || descMatch?.[2] || '';
+      const imgMatches = description.match(/<img[^>]+>/gi) || [];
+      if (imgMatches.length > 0) {
+        log(`\n📦 Found ${imgMatches.length} <img> tag(s) in description:`, 'success');
+        imgMatches.forEach((tag, i) => {
+          const srcMatch = tag.match(/src=["']([^"']+)["']/i);
+          const widthMatch = tag.match(/width=["'](\d+)["']/i);
+          const heightMatch = tag.match(/height=["'](\d+)["']/i);
+
+          log(`  IMG ${i + 1}:`, 'info');
+          if (widthMatch && heightMatch) {
+            log(`    Size: ${widthMatch[1]} x ${heightMatch[1]} px`, 'success');
+          }
+          if (srcMatch) {
+            log(`    URL: ${srcMatch[1]}`, 'info');
+          }
+        });
+      } else {
+        log('  ✗ No <img> tags in description', 'warn');
+      }
+    }
+
+    async function testBBCNews() {
+      log('\n\n🚀 Starting BBC News RSS Analysis...', 'header');
+      try {
+        const xml = await fetchWithProxy('https://feeds.bbci.co.uk/news/rss.xml');
+        log(`✓ Fetched ${(xml.length / 1024).toFixed(0)} KB of XML data`, 'success');
+
+        const items = xml.match(/<item[^>]*>([\s\S]*?)<\/item>/g) || [];
+        log(`✓ Found ${items.length} articles`, 'success');
+
+        // Analyze first 3 articles
+        items.slice(0, 3).forEach(item => extractAllImageFields(item, 'BBC News'));
+
+        log('\n✅ BBC News Analysis Complete', 'success');
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    async function testNYTimesWorld() {
+      log('\n\n🚀 Starting NY Times World RSS Analysis...', 'header');
+      try {
+        const xml = await fetchWithProxy('https://rss.nytimes.com/services/xml/rss/nyt/World.xml');
+        log(`✓ Fetched ${(xml.length / 1024).toFixed(0)} KB of XML data`, 'success');
+
+        const items = xml.match(/<item[^>]*>([\s\S]*?)<\/item>/g) || [];
+        log(`✓ Found ${items.length} articles`, 'success');
+
+        // Analyze first 3 articles
+        items.slice(0, 3).forEach(item => extractAllImageFields(item, 'NY Times World'));
+
+        log('\n✅ NY Times World Analysis Complete', 'success');
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'error');
+      }
+    }
+
+    // Auto-run on page load
+    window.addEventListener('load', () => {
+      log('🌍 World News Image API Diagnostic Tool Ready', 'success');
+      log('Click buttons above to analyze RSS feeds\n', 'info');
+    });
+  </script>
+</body>
+</html>
