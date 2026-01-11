@@ -13,11 +13,9 @@ import { imagePreloader } from '../lib/imagePreloader';
 import { getAdSlot, shouldPlaceAd } from '../lib/adConfig';
 
 export const NewsFeed = () => {
-  const { articles, currentCategory, userLocation, selectedTopic, savedArticles, userPreferences, setShowAuthModal, isLoadingArticles, isRefreshing, setCurrentCategory, handleLocationSet } = useApp();
+  const { articles, currentCategory, userLocation, selectedTopic, savedArticles, userPreferences, setShowAuthModal, isLoadingArticles, isRefreshing, isLoadingMore, hasMoreArticles, loadMoreArticles, setCurrentCategory, handleLocationSet } = useApp();
   const { user } = useAuth();
   const [showPremiumToast, setShowPremiumToast] = useState(false);
-  const [displayLimit, setDisplayLimit] = useState(10);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const filteredArticles = useMemo(() => {
     let filtered = articles.filter(article => {
@@ -38,19 +36,15 @@ export const NewsFeed = () => {
     return filtered;
   }, [articles, currentCategory, selectedTopic, savedArticles, userPreferences]);
 
-  const displayedArticles = useMemo(() => {
-    return filteredArticles.slice(0, displayLimit);
-  }, [filteredArticles, displayLimit]);
-
   const feedWithAds = useMemo(() => {
-    if (!shouldShowAds(user) || displayedArticles.length === 0) {
-      return displayedArticles.map(article => ({ type: 'article' as const, content: article }));
+    if (!shouldShowAds(user) || filteredArticles.length === 0) {
+      return filteredArticles.map(article => ({ type: 'article' as const, content: article }));
     }
 
     const result: Array<{ type: 'article' | 'google-ad'; content: any }> = [];
     let googleAdIndex = 0;
 
-    displayedArticles.forEach((article, index) => {
+    filteredArticles.forEach((article, index) => {
       result.push({ type: 'article', content: article });
 
       if (shouldPlaceAd(index, 'feed')) {
@@ -64,38 +58,30 @@ export const NewsFeed = () => {
     });
 
     return result;
-  }, [displayedArticles, user]);
+  }, [filteredArticles, user]);
 
   useEffect(() => {
-    setDisplayLimit(10);
-  }, [currentCategory, selectedTopic]);
-
-  useEffect(() => {
-    if (displayedArticles.length > 0) {
-      imagePreloader.preloadArticleImages(displayedArticles.slice(0, 5));
+    if (filteredArticles.length > 0) {
+      imagePreloader.preloadArticleImages(filteredArticles.slice(0, 5));
     }
-  }, [displayedArticles]);
+  }, [filteredArticles]);
 
   useEffect(() => {
     const handleScroll = () => {
-      if (isLoadingMore || displayLimit >= filteredArticles.length) return;
+      if (isLoadingMore || !hasMoreArticles) return;
 
       const scrollHeight = document.documentElement.scrollHeight;
       const scrollTop = window.scrollY;
       const clientHeight = window.innerHeight;
 
       if (scrollHeight - scrollTop - clientHeight < 800) {
-        setIsLoadingMore(true);
-        setTimeout(() => {
-          setDisplayLimit(prev => Math.min(prev + 5, filteredArticles.length));
-          setIsLoadingMore(false);
-        }, 300);
+        loadMoreArticles();
       }
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLoadingMore, displayLimit, filteredArticles.length]);
+  }, [isLoadingMore, hasMoreArticles, loadMoreArticles]);
 
   useEffect(() => {
     const justActivated = localStorage.getItem('subscription_just_activated');
@@ -221,6 +207,11 @@ export const NewsFeed = () => {
             {isLoadingMore && (
               <div className="flex items-center justify-center py-8">
                 <Loader className="text-blue-600 animate-spin" size={24} />
+              </div>
+            )}
+            {!hasMoreArticles && filteredArticles.length > 0 && (
+              <div className="flex items-center justify-center py-8 text-slate-500 dark:text-slate-400 text-sm">
+                No more articles to load
               </div>
             )}
           </div>

@@ -14,6 +14,9 @@ interface AppContextType {
   articles: Article[];
   isLoadingArticles: boolean;
   isRefreshing: boolean;
+  isLoadingMore: boolean;
+  hasMoreArticles: boolean;
+  loadMoreArticles: () => Promise<void>;
   favorites: Set<string>;
   toggleFavorite: (articleId: string) => void;
   likedArticles: Set<string>;
@@ -78,6 +81,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [isLoadingArticles, setIsLoadingArticles] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreArticles, setHasMoreArticles] = useState(true);
+  const [currentOffset, setCurrentOffset] = useState(0);
   const [favorites, setFavorites] = useState<Set<string>>(new Set(loadFromLocalStorage<string[]>('favorites', [])));
   const [likedArticles, setLikedArticles] = useState<Set<string>>(new Set(loadFromLocalStorage<string[]>('likedArticles', [])));
   const [dislikedArticles, setDislikedArticles] = useState<Set<string>>(new Set(loadFromLocalStorage<string[]>('dislikedArticles', [])));
@@ -229,6 +235,64 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    setCurrentOffset(0);
+    setHasMoreArticles(true);
+  }, [currentCategory, selectedTopic]);
+
+  const loadMoreArticles = async () => {
+    if (isLoadingMore || !hasMoreArticles) return;
+
+    setIsLoadingMore(true);
+    try {
+      const userId = getUserId();
+      const nextOffset = articles.length;
+      let newArticles: Article[] = [];
+
+      if (currentCategory === 'discover' || currentCategory === 'saved') {
+        const backendArticles = await newsApi.getDiscoverFeed(
+          userId,
+          selectedTopic === 'all' ? undefined : selectedTopic,
+          20,
+          nextOffset
+        );
+        newArticles = backendArticles.map(convertBackendArticle);
+      } else if (currentCategory === 'local') {
+        const savedLocation = loadLocationFromStorage();
+        if (savedLocation) {
+          const localArticles = await newsApi.getLocalFeed(
+            savedLocation.zipCode,
+            savedLocation.city,
+            savedLocation.state,
+            20,
+            nextOffset
+          );
+          newArticles = localArticles.map(convertBackendArticle);
+        }
+      } else {
+        const backendArticles = await newsApi.getArticlesByCategory(currentCategory, 20, nextOffset);
+        newArticles = backendArticles.map(convertBackendArticle);
+      }
+
+      if (newArticles.length < 20) {
+        setHasMoreArticles(false);
+      }
+
+      if (newArticles.length > 0) {
+        setArticles(prev => [...prev, ...newArticles]);
+        setCurrentOffset(nextOffset + newArticles.length);
+        console.log(`✅ Loaded ${newArticles.length} more articles (total: ${articles.length + newArticles.length})`);
+      } else {
+        setHasMoreArticles(false);
+        console.log('📭 No more articles to load');
+      }
+    } catch (error) {
+      console.error('❌ Error loading more articles:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
     const fetchArticles = async () => {
       const cachedArticles = getCachedArticles(currentCategory, selectedTopic);
 
@@ -236,6 +300,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         console.log('⚡ INSTANT LOAD: Showing cached articles immediately');
         setArticles(cachedArticles);
         setIsLoadingArticles(false);
+        setHasMoreArticles(true);
 
         // Check if cache is stale and refresh in background
         if (isCacheStale(currentCategory, selectedTopic)) {
@@ -553,6 +618,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         articles,
         isLoadingArticles,
         isRefreshing,
+        isLoadingMore,
+        hasMoreArticles,
+        loadMoreArticles,
         favorites,
         toggleFavorite,
         likedArticles,

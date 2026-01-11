@@ -86,13 +86,14 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const userId = url.searchParams.get("user_id");
     const limit = parseInt(url.searchParams.get("limit") || "20");
+    const offset = parseInt(url.searchParams.get("offset") || "0");
     const category = url.searchParams.get("category");
-    
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const fetchLimit = category === 'gaming' ? Math.min(limit * 3, 100) : limit;
+
+    const fetchLimit = category === 'gaming' ? Math.min((limit + offset) * 3, 200) : (limit + offset + 20);
 
     let query = supabase
       .from("articles")
@@ -144,10 +145,10 @@ Deno.serve(async (req: Request) => {
       ...article,
       score: scoreArticle(article, userPreferences),
     }));
-    
+
     scoredArticles.sort((a, b) => b.score - a.score);
-    
-    const finalArticles = scoredArticles.slice(0, limit).map(({ score, ...article }) => article);
+
+    const finalArticles = scoredArticles.slice(offset, offset + limit).map(({ score, ...article }) => article);
     
     return new Response(
       JSON.stringify({

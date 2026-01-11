@@ -60,12 +60,13 @@ const getHeaders = () => ({
 });
 
 export const newsApi = {
-  async getDiscoverFeed(userId?: string, category?: string, limit = 20): Promise<Article[]> {
+  async getDiscoverFeed(userId?: string, category?: string, limit = 20, offset = 0): Promise<Article[]> {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('user_id', userId);
       if (category) params.append('category', category);
       params.append('limit', limit.toString());
+      params.append('offset', offset.toString());
 
       const response = await fetch(
         `${FUNCTIONS_URL}/discover-feed?${params}`,
@@ -84,14 +85,14 @@ export const newsApi = {
     }
   },
 
-  async getArticlesByCategory(category: string, limit = 20): Promise<Article[]> {
+  async getArticlesByCategory(category: string, limit = 20, offset = 0): Promise<Article[]> {
     try {
       const { data, error } = await supabase
         .from('articles')
         .select('*')
         .eq('category', category)
         .order('published_at', { ascending: false })
-        .limit(limit);
+        .range(offset, offset + limit - 1);
 
       if (error) throw error;
       return data || [];
@@ -287,13 +288,14 @@ export const newsApi = {
     }
   },
 
-  async getLocalFeed(zipCode: string, city: string, state: string, limit = 50): Promise<Article[]> {
+  async getLocalFeed(zipCode: string, city: string, state: string, limit = 50, offset = 0): Promise<Article[]> {
     try {
       const params = new URLSearchParams({
         zip_code: zipCode,
         city,
         state,
         limit: limit.toString(),
+        offset: offset.toString(),
       });
 
       const response = await fetch(

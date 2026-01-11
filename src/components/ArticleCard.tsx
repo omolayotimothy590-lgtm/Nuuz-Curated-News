@@ -255,6 +255,8 @@ export const ArticleCard = ({ article }: ArticleCardProps) => {
               className={`w-full h-full object-cover transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               loading="lazy"
               decoding="async"
+              style={{ imageRendering: 'crisp-edges' }}
+              fetchpriority="high"
             />
           </div>
         )}

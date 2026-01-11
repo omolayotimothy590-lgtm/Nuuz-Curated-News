@@ -25,6 +25,7 @@ Deno.serve(async (req: Request) => {
     const city = url.searchParams.get('city');
     const state = url.searchParams.get('state');
     const limit = parseInt(url.searchParams.get('limit') || '50');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
 
     if (!city && !state) {
       return new Response(
@@ -49,7 +50,7 @@ Deno.serve(async (req: Request) => {
       query = query.or(`state.ilike.%${state}%,title.ilike.%${state}%,summary.ilike.%${state}%`);
     }
 
-    const { data: localArticles, error: localError } = await query.limit(limit);
+    const { data: localArticles, error: localError } = await query.range(offset, offset + limit - 1);
 
     if (localError) {
       console.error('Error fetching local articles:', localError);
@@ -57,12 +58,12 @@ Deno.serve(async (req: Request) => {
 
     let articles = localArticles || [];
 
-    if (articles.length < 10) {
+    if (articles.length < 10 && offset === 0) {
       const { data: generalArticles } = await supabase
         .from('articles')
         .select('*')
         .order('published_at', { ascending: false })
-        .limit(limit - articles.length);
+        .range(0, limit - articles.length - 1);
 
       if (generalArticles) {
         articles = [...articles, ...generalArticles];
