@@ -30,15 +30,20 @@ Deno.serve(async (req: Request) => {
 
     const { data: cached, error: cacheError } = await supabase
       .from('scraped_images')
-      .select('image_url')
+      .select('image_url, created_at')
       .eq('article_url', articleUrl)
       .maybeSingle();
 
     if (cached && !cacheError) {
-      return new Response(
-        JSON.stringify({ image: cached.image_url, success: true, cached: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const cacheAge = Date.now() - new Date(cached.created_at).getTime();
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+      if (cached.image_url !== null || cacheAge < sevenDays) {
+        return new Response(
+          JSON.stringify({ image: cached.image_url, success: true, cached: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const response = await fetch(articleUrl, {
@@ -78,11 +83,12 @@ Deno.serve(async (req: Request) => {
     const isGenericLogo = (url: string): boolean => {
       const lowerUrl = url.toLowerCase();
       return (
-        lowerUrl.includes('logo') ||
-        lowerUrl.includes('icon') ||
+        lowerUrl.includes('default_logo') ||
+        lowerUrl.includes('yahoo_default_logo') ||
+        lowerUrl.includes('/logo.') ||
+        lowerUrl.includes('icon.') ||
         lowerUrl.includes('avatar') ||
-        lowerUrl.includes('yahoo.com/assets') ||
-        lowerUrl.includes('s.yimg.com/cv') ||
+        lowerUrl.includes('yahoo.com/assets/logo') ||
         lowerUrl.includes('badge') ||
         lowerUrl.includes('default-image') ||
         lowerUrl.includes('placeholder')
