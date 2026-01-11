@@ -68,23 +68,48 @@ export const NewsFeed = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (isLoadingMore || !hasMoreArticles) {
-        return;
-      }
-
       const scrollHeight = document.documentElement.scrollHeight;
       const scrollTop = window.scrollY;
       const clientHeight = window.innerHeight;
       const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
+      console.log('🔍 Scroll detected', {
+        distanceFromBottom,
+        scrollTop,
+        scrollHeight,
+        clientHeight,
+        isLoadingMore,
+        hasMoreArticles
+      });
+
+      if (isLoadingMore || !hasMoreArticles) {
+        return;
+      }
+
       if (distanceFromBottom < 800) {
-        console.log('📜 Near bottom, triggering load more', { distanceFromBottom, scrollTop, scrollHeight, clientHeight });
+        console.log('📜 Near bottom, triggering load more');
         loadMoreArticles();
       }
     };
 
-    console.log('✅ Scroll listener attached');
-    window.addEventListener('scroll', handleScroll);
+    console.log('✅ Scroll listener attached', { isLoadingMore, hasMoreArticles });
+
+    // Initial check in case we're already near the bottom
+    setTimeout(() => {
+      const scrollHeight = document.documentElement.scrollHeight;
+      const scrollTop = window.scrollY;
+      const clientHeight = window.innerHeight;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+      console.log('🎯 Initial scroll check', { distanceFromBottom, hasMoreArticles, isLoadingMore });
+
+      if (distanceFromBottom < 800 && !isLoadingMore && hasMoreArticles) {
+        console.log('🚀 Auto-loading more articles on mount');
+        loadMoreArticles();
+      }
+    }, 500);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       console.log('🗑️ Scroll listener removed');
       window.removeEventListener('scroll', handleScroll);
@@ -215,6 +240,19 @@ export const NewsFeed = () => {
             {isLoadingMore && (
               <div className="flex items-center justify-center py-8">
                 <Loader className="text-blue-600 animate-spin" size={24} />
+              </div>
+            )}
+            {!isLoadingMore && hasMoreArticles && filteredArticles.length > 0 && (
+              <div className="flex items-center justify-center py-8">
+                <button
+                  onClick={() => {
+                    console.log('🔘 Manual load more clicked');
+                    loadMoreArticles();
+                  }}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition active:scale-95"
+                >
+                  Load More Articles
+                </button>
               </div>
             )}
             {!hasMoreArticles && filteredArticles.length > 0 && (
