@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Article, CategoryType, TopicCategory, UserPreferences } from '../types';
 import { newsApi, Article as BackendArticle } from '../lib/newsApi';
 import { useAuth } from './AuthContext';
@@ -239,9 +239,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setHasMoreArticles(true);
   }, [currentCategory, selectedTopic]);
 
-  const loadMoreArticles = async () => {
-    if (isLoadingMore || !hasMoreArticles) return;
+  const loadMoreArticles = useCallback(async () => {
+    if (isLoadingMore || !hasMoreArticles) {
+      console.log('🛑 Skipping load more:', { isLoadingMore, hasMoreArticles });
+      return;
+    }
 
+    console.log('🔄 Loading more articles...', { currentOffset: articles.length, category: currentCategory });
     setIsLoadingMore(true);
     try {
       const userId = getUserId();
@@ -249,6 +253,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       let newArticles: Article[] = [];
 
       if (currentCategory === 'discover' || currentCategory === 'saved') {
+        console.log(`📡 Fetching discover feed with offset ${nextOffset}`);
         const backendArticles = await newsApi.getDiscoverFeed(
           userId,
           selectedTopic === 'all' ? undefined : selectedTopic,
@@ -259,6 +264,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       } else if (currentCategory === 'local') {
         const savedLocation = loadLocationFromStorage();
         if (savedLocation) {
+          console.log(`📡 Fetching local feed with offset ${nextOffset}`);
           const localArticles = await newsApi.getLocalFeed(
             savedLocation.zipCode,
             savedLocation.city,
@@ -269,18 +275,25 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           newArticles = localArticles.map(convertBackendArticle);
         }
       } else {
+        console.log(`📡 Fetching category ${currentCategory} with offset ${nextOffset}`);
         const backendArticles = await newsApi.getArticlesByCategory(currentCategory, 20, nextOffset);
         newArticles = backendArticles.map(convertBackendArticle);
       }
 
+      console.log(`📦 Received ${newArticles.length} new articles`);
+
       if (newArticles.length < 20) {
         setHasMoreArticles(false);
+        console.log('⚠️ Less than 20 articles returned, no more to load');
       }
 
       if (newArticles.length > 0) {
-        setArticles(prev => [...prev, ...newArticles]);
+        setArticles(prev => {
+          const updated = [...prev, ...newArticles];
+          console.log(`✅ Total articles now: ${updated.length}`);
+          return updated;
+        });
         setCurrentOffset(nextOffset + newArticles.length);
-        console.log(`✅ Loaded ${newArticles.length} more articles (total: ${articles.length + newArticles.length})`);
       } else {
         setHasMoreArticles(false);
         console.log('📭 No more articles to load');
@@ -290,7 +303,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoadingMore(false);
     }
-  };
+  }, [isLoadingMore, hasMoreArticles, articles.length, currentCategory, selectedTopic]);
 
   useEffect(() => {
     const fetchArticles = async () => {

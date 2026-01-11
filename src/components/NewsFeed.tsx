@@ -68,19 +68,27 @@ export const NewsFeed = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (isLoadingMore || !hasMoreArticles) return;
+      if (isLoadingMore || !hasMoreArticles) {
+        return;
+      }
 
       const scrollHeight = document.documentElement.scrollHeight;
       const scrollTop = window.scrollY;
       const clientHeight = window.innerHeight;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-      if (scrollHeight - scrollTop - clientHeight < 800) {
+      if (distanceFromBottom < 800) {
+        console.log('📜 Near bottom, triggering load more', { distanceFromBottom, scrollTop, scrollHeight, clientHeight });
         loadMoreArticles();
       }
     };
 
+    console.log('✅ Scroll listener attached');
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      console.log('🗑️ Scroll listener removed');
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, [isLoadingMore, hasMoreArticles, loadMoreArticles]);
 
   useEffect(() => {
