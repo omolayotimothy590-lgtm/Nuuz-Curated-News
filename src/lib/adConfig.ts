@@ -44,10 +44,10 @@ export const AD_CONFIG: AdConfig = {
   adSlots: {
     // Main news feed ad slots
     feed: [
-      { id: '1234567890', description: 'Feed Ad Slot 1' },
-      { id: '2345678901', description: 'Feed Ad Slot 2' },
-      { id: '3456789012', description: 'Feed Ad Slot 3' },
-      { id: '4567890123', description: 'Feed Ad Slot 4' },
+      { id: '1193300078', description: 'Feed Ad Slot 1' },
+      { id: '6248856644', description: 'Feed Ad Slot 2' },
+      { id: '2945365445', description: 'Feed Ad Slot 3' },
+      { id: '2547400884', description: 'Feed Ad Slot 4' },
     ],
     // Search results ad slots
     search: [
@@ -77,7 +77,7 @@ export const AD_CONFIG: AdConfig = {
   adFormat: 'fluid',
 
   // Layout key for in-feed ads
-  layoutKey: '-6t+ed+2i-1n-4w',
+  layoutKey: '-6t+eh+16-3z-5g',
 };
 
 /**
