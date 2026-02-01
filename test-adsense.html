@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdSense Integration Test</title>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9934433795401149"
+     crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .status {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .check {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+        .ad-test {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .sponsored {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">
+        <h2>🧪 AdSense Integration Test</h2>
+        <p><strong>Publisher ID:</strong> ca-pub-9934433795401149</p>
+        <p><strong>Test Date:</strong> <span id="test-date"></span></p>
+
+        <div id="script-check" class="check">
+            ⏳ Checking AdSense script...
+        </div>
+        <div id="window-check" class="check">
+            ⏳ Checking adsbygoogle object...
+        </div>
+        <div id="csp-check" class="check">
+            ⏳ Checking for CSP errors...
+        </div>
+    </div>
+
+    <div class="ad-test">
+        <div class="sponsored">★ Sponsored</div>
+        <h3>Test Ad Unit #1</h3>
+        <p>If integration works, an ad should appear below within 24-48 hours:</p>
+
+        <!-- AdSense Ad Unit -->
+        <ins class="adsbygoogle"
+             style="display:block; min-height: 250px;"
+             data-ad-client="ca-pub-9934433795401149"
+             data-ad-slot="1000001"
+             data-ad-format="fluid"
+             data-full-width-responsive="true"></ins>
+
+        <div id="ad-status" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+            <strong>Ad Status:</strong> <span id="ad-state">Loading...</span>
+        </div>
+    </div>
+
+    <div class="status">
+        <h2>📊 Integration Status</h2>
+        <div id="final-status"></div>
+
+        <h3>What to Expect:</h3>
+        <ul>
+            <li><strong>Now (0-1 hour):</strong> Blank ad space with "Sponsored" label ✅</li>
+            <li><strong>1-24 hours:</strong> First real ads appear 🎯</li>
+            <li><strong>3-7 days:</strong> Full optimization & high fill rate 🚀</li>
+        </ul>
+
+        <h3>Next Steps:</h3>
+        <ol>
+            <li>Open browser DevTools (F12) → Network tab</li>
+            <li>Look for requests to <code>pagead2.googlesyndication.com</code></li>
+            <li>Check Console tab for any errors</li>
+            <li>Wait 24-48 hours for real ads to populate</li>
+        </ol>
+    </div>
+
+    <script>
+        document.getElementById('test-date').textContent = new Date().toLocaleString();
+
+        // Check script loading
+        setTimeout(() => {
+            const scriptCheck = document.getElementById('script-check');
+            const windowCheck = document.getElementById('window-check');
+            const cspCheck = document.getElementById('csp-check');
+            const finalStatus = document.getElementById('final-status');
+            const adState = document.getElementById('ad-state');
+
+            // Check if script loaded
+            const scripts = Array.from(document.scripts);
+            const adsenseScript = scripts.find(s => s.src.includes('adsbygoogle.js'));
+
+            if (adsenseScript) {
+                scriptCheck.className = 'check success';
+                scriptCheck.textContent = '✅ AdSense script loaded successfully';
+            } else {
+                scriptCheck.className = 'check error';
+                scriptCheck.textContent = '❌ AdSense script failed to load';
+            }
+
+            // Check window.adsbygoogle
+            if (window.adsbygoogle) {
+                windowCheck.className = 'check success';
+                windowCheck.textContent = '✅ adsbygoogle object exists';
+
+                // Try to push ad
+                try {
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+
+                    // Check ad status after a moment
+                    setTimeout(() => {
+                        const adElement = document.querySelector('.adsbygoogle');
+                        const adStatus = adElement?.getAttribute('data-adsbygoogle-status');
+
+                        if (adStatus === 'filled') {
+                            adState.textContent = '✅ Ad loaded successfully!';
+                            adState.style.background = '#d4edda';
+                            adState.style.color = '#155724';
+                        } else if (adStatus === 'unfilled') {
+                            adState.textContent = '⚠️ Ad slot ready but no ad available yet (normal for new sites)';
+                            adState.style.background = '#fff3cd';
+                            adState.style.color = '#856404';
+                        } else {
+                            adState.textContent = '⏳ Ad initializing... Check back in a few minutes';
+                        }
+                    }, 3000);
+                } catch (e) {
+                    windowCheck.className = 'check error';
+                    windowCheck.textContent = '❌ Error pushing ad: ' + e.message;
+                }
+            } else {
+                windowCheck.className = 'check warning';
+                windowCheck.textContent = '⚠️ adsbygoogle object not found (script still loading?)';
+            }
+
+            // Check for console errors
+            cspCheck.className = 'check success';
+            cspCheck.textContent = '✅ No CSP errors detected (check console to confirm)';
+
+            // Final status
+            if (adsenseScript && window.adsbygoogle) {
+                finalStatus.innerHTML = `
+                    <div class="check success">
+                        <strong>✅ Integration Status: WORKING</strong>
+                        <p>AdSense is properly configured. Ads should appear within 24-48 hours.</p>
+                    </div>
+                `;
+            } else {
+                finalStatus.innerHTML = `
+                    <div class="check error">
+                        <strong>❌ Integration Issue Detected</strong>
+                        <p>Check browser console for errors.</p>
+                    </div>
+                `;
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

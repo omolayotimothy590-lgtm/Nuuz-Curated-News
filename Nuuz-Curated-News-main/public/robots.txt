@@ -1,0 +1,13 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# AdSense crawlers
+User-agent: Mediapartners-Google
+Allow: /
+
+# Explicitly allow ads.txt
+Allow: /ads.txt
+
+# Sitemap
+Sitemap: https://cool-tartufo-a76644.netlify.app/sitemap.xml

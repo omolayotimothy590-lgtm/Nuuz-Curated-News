@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#10b981</color>
+    <color name="ad_background">#f3f4f6</color>
+    <color name="ad_label_background">#ef4444</color>
+    <color name="background">#ffffff</color>
+    <color name="background_dark">#1f2937</color>
+    <color name="primary">#2563eb</color>
+    <color name="primary_dark">#1e40af</color>
+    <color name="primary_light">#3b82f6</color>
+    <color name="text_primary">#111827</color>
+    <color name="text_secondary">#6b7280</color>
+    <string name="app_name">Nuuz</string>
+    <string name="app_tagline">Your AI-Powered News Companion</string>
+    <string name="close_ad">Close ad</string>
+    <string name="sponsored">Sponsored</string>
+    <style name="Theme.Nuuz" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+    </style>
+    <style name="Theme.Nuuz.Splash" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/primary</item>
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/primary</item>
+    </style>
+</resources>

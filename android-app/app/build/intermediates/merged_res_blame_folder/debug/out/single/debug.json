@@ -1,0 +1,110 @@
+[
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/layout_activity_main.xml.flat",
+        "source": "com.nuuz.app-main-45:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xhdpi_ic_launcher_background.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/drawable_ad_background.xml.flat",
+        "source": "com.nuuz.app-main-45:/drawable/ad_background.xml"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xhdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xhdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxhdpi_ic_launcher_background.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/xml_network_security_config.xml.flat",
+        "source": "com.nuuz.app-main-45:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxhdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxhdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxxhdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxxhdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/layout_activity_splash.xml.flat",
+        "source": "com.nuuz.app-main-45:/layout/activity_splash.xml"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-mdpi_ic_launcher_background.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-mdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-hdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-hdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/layout_native_ad_layout.xml.flat",
+        "source": "com.nuuz.app-main-45:/layout/native_ad_layout.xml"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-mdpi_ic_launcher_monochrome.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-mdpi/ic_launcher_monochrome.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-hdpi_ic_launcher_background.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-hdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.nuuz.app-main-45:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-mdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.nuuz.app-merged_res-43:/mipmap-xxxhdpi_ic_launcher_background.png.flat",
+        "source": "com.nuuz.app-main-45:/mipmap-xxxhdpi/ic_launcher_background.png"
+    }
+]
