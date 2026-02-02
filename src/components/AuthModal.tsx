@@ -123,9 +123,20 @@ export const AuthModal = () => {
       // #endregion
       
       if (isWebView) {
-        // In WebView, use custom button that manually triggers OAuth with account picker
-        // This is necessary because SDK's redirect mode doesn't show account picker in WebView
+        // In WebView, use custom button that triggers native Android Google Sign-In
+        // This shows the native account picker instead of OAuth redirect
         buttonDiv.innerHTML = '';
+        
+        // Listen for native sign-in token event
+        const handleNativeSignIn = (event: CustomEvent) => {
+          const token = event.detail?.credential;
+          if (token) {
+            console.log('✅ [WebView] Received token from native Android sign-in');
+            handleGoogleSignIn({ credential: token });
+          }
+        };
+        
+        window.addEventListener('google-signin-token', handleNativeSignIn as EventListener);
         
         // Create custom Google Sign-In button
         const customButton = document.createElement('button');
@@ -155,37 +166,44 @@ export const AuthModal = () => {
           customButton.style.backgroundColor = 'white';
         };
         
-        // Click handler - trigger OAuth redirect (will open in Custom Tabs on Android)
+        // Click handler - trigger native Android Google Sign-In
         customButton.onclick = (e) => {
           e.preventDefault();
           e.stopPropagation();
           
-          console.log('🔐 [WebView] Button clicked - triggering OAuth redirect');
+          console.log('🔐 [WebView] Button clicked - triggering native Android Google Sign-In');
+          console.log('🔍 [WebView] Checking AndroidBridge availability...');
+          console.log('🔍 [WebView] AndroidBridge exists:', !!(window as any).AndroidBridge);
+          console.log('🔍 [WebView] AndroidBridge.triggerGoogleSignIn exists:', !!((window as any).AndroidBridge?.triggerGoogleSignIn));
           
           // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/68cfcee5-bad9-41d1-b318-97472c48b54e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthModal.tsx:webview-button-click',message:'WebView custom button clicked - triggering OAuth',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7244/ingest/68cfcee5-bad9-41d1-b318-97472c48b54e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthModal.tsx:webview-button-click',message:'WebView custom button clicked - triggering native sign-in',data:{hasAndroidBridge:!!(window as any).AndroidBridge,hasTriggerMethod:!!((window as any).AndroidBridge?.triggerGoogleSignIn)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
           // #endregion
           
-          // Direct OAuth redirect with prompt=select_account to force account picker
-          // Android will intercept this and open in Custom Tabs (real browser context)
-          const redirectUri = encodeURIComponent(window.location.origin + '/');
-          const nonce = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-          const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-            `client_id=${GOOGLE_CLIENT_ID}` +
-            `&redirect_uri=${redirectUri}` +
-            `&response_type=id_token` +
-            `&scope=openid email profile` +
-            `&nonce=${nonce}` +
-            `&prompt=select_account`; // CRITICAL: This forces account picker!
+          // Use native Android Google Sign-In SDK (shows native account picker)
+          // Check multiple times with a small delay in case AndroidBridge loads asynchronously
+          const tryNativeSignIn = (attempts = 0) => {
+            if ((window as any).AndroidBridge && typeof (window as any).AndroidBridge.triggerGoogleSignIn === 'function') {
+              console.log('✅ [WebView] AndroidBridge.triggerGoogleSignIn available, calling it...');
+              try {
+                (window as any).AndroidBridge.triggerGoogleSignIn();
+                console.log('✅ [WebView] triggerGoogleSignIn() called successfully');
+              } catch (err) {
+                console.error('❌ [WebView] Error calling triggerGoogleSignIn:', err);
+                alert('Error triggering sign-in: ' + (err as Error).message);
+              }
+            } else if (attempts < 5) {
+              // Wait a bit and try again (AndroidBridge might be loading)
+              console.log(`⏳ [WebView] AndroidBridge not ready, retrying... (attempt ${attempts + 1}/5)`);
+              setTimeout(() => tryNativeSignIn(attempts + 1), 200);
+            } else {
+              // After 5 attempts, show error and don't fall back to OAuth
+              console.error('❌ [WebView] AndroidBridge.triggerGoogleSignIn not available after 5 attempts');
+              alert('Native sign-in not available. Please ensure you are using the latest version of the app.');
+            }
+          };
           
-          console.log('🔐 [WebView] Redirecting to Google OAuth:', googleAuthUrl.substring(0, 100) + '...');
-          
-          // #region agent log
-          fetch('http://127.0.0.1:7244/ingest/68cfcee5-bad9-41d1-b318-97472c48b54e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthModal.tsx:manual-oauth-redirect',message:'Redirecting to Google OAuth with account picker',data:{url:googleAuthUrl.substring(0,100)+'...'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
-          
-          // This will be intercepted by Android and opened in Custom Tabs
-          window.location.href = googleAuthUrl;
+          tryNativeSignIn();
         };
         
         buttonDiv.appendChild(customButton);

@@ -120,6 +120,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       throw error;
     }
   };
+  
+  // Expose signInWithGoogle globally for Android native sign-in
+  useEffect(() => {
+    (window as any).signInWithGoogle = signInWithGoogle;
+    console.log('✅ [AuthContext] Exposed signInWithGoogle globally for Android bridge');
+    
+    return () => {
+      delete (window as any).signInWithGoogle;
+    };
+  }, [signInWithGoogle]);
 
   const signOut = async () => {
     console.log('👋 Signing out...');

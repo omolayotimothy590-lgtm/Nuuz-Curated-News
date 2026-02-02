@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- TEMPORARY: Allow HTTP for local testing (remove when switching back to Netlify) -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">10.11.225.230</domain>
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-    </domain-config>
-    
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">cool-tartufo-a76644.netlify.app</domain>
+        <domain includeSubdomains="true">nuuzcuratednews.vercel.app</domain>
         <domain includeSubdomains="true">accounts.google.com</domain>
         <domain includeSubdomains="true">gstatic.com</domain>
         <domain includeSubdomains="true">googleapis.com</domain>
