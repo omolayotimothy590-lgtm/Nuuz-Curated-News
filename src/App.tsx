@@ -15,47 +15,101 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { useApp } from './contexts/AppContext';
 
 // Global OAuth callback handler - works even if AuthModal isn't mounted
-// Handles OAuth redirects from Custom Tabs when user completes Google Sign-In
+// Handles both OAuth redirects from Custom Tabs and native Android sign-in tokens
 const OAuthCallbackHandler = () => {
   const { signInWithGoogle } = useAuth();
   const { setShowAuthModal } = useApp();
   
   useEffect(() => {
-    // Check for id_token in URL hash or query params (OAuth callback from Custom Tabs)
-    // Google OAuth typically returns id_token in the hash fragment: #id_token=...
+    // Helper function to process token
+    const processToken = (token: string, source: string) => {
+      console.log(`✅ [Global] Processing token from ${source}`);
+      console.log('🔐 [Global] Token length:', token.length);
+      console.log('🔐 [Global] Token preview:', token.substring(0, 50) + '...');
+      
+      signInWithGoogle(token)
+        .then(() => {
+          console.log('✅ [Global] Sign-in successful - user state saved');
+          setShowAuthModal(false);
+        })
+        .catch((err) => {
+          console.error('❌ [Global] Sign-in failed:', err);
+          console.error('❌ [Global] Error details:', JSON.stringify(err, null, 2));
+          alert('Sign-in failed: ' + (err.message || 'Unknown error'));
+        });
+    };
+    
+    // 1. Check localStorage for token (from native Android sign-in - most reliable)
+    const checkLocalStorageToken = () => {
+      const storedToken = localStorage.getItem('__google_signin_token');
+      if (storedToken) {
+        console.log('✅ [Global] Found token in localStorage');
+        localStorage.removeItem('__google_signin_token');
+        processToken(storedToken, 'localStorage');
+        return true;
+      }
+      return false;
+    };
+    
+    // Check immediately
+    if (checkLocalStorageToken()) {
+      // Token found and processed, set up polling to catch any missed tokens
+      const interval = setInterval(() => {
+        if (!checkLocalStorageToken()) {
+          clearInterval(interval);
+        }
+      }, 500);
+      
+      return () => clearInterval(interval);
+    }
+    
+    // 2. Check for id_token in URL hash or query params (OAuth callback from Custom Tabs)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const queryParams = new URLSearchParams(window.location.search);
     const idToken = hashParams.get('id_token') || queryParams.get('id_token');
     
     if (idToken) {
       console.log('✅ [Global] OAuth callback detected - processing id_token');
-      console.log('🔐 [Global] Token length:', idToken.length);
-      console.log('🔐 [Global] Token source:', hashParams.get('id_token') ? 'hash' : 'query');
-      
-      // Clean URL immediately to prevent re-processing
-      // Use replaceState to avoid page reload which would clear React state
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
-      console.log('🔧 [Global] URL cleaned, navigating to:', cleanUrl);
-      
-      // Process the token - this will save to localStorage and update React state
-      signInWithGoogle(idToken)
-        .then(() => {
-          console.log('✅ [Global] Sign-in successful - user state saved to localStorage');
-          console.log('✅ [Global] Closing auth modal');
-          setShowAuthModal(false);
-          
-          // CRITICAL: Do NOT reload page - it clears React state before it's saved
-          // Auth state is already persisted in localStorage and React context
-          // Navigation without reload preserves the authenticated state
-          console.log('✅ [Global] Auth state persisted - no reload needed');
-        })
-        .catch((err) => {
-          console.error('❌ [Global] OAuth callback failed:', err);
-          console.error('❌ [Global] Error details:', JSON.stringify(err, null, 2));
-          alert('Sign-in failed: ' + (err.message || 'Unknown error'));
-        });
+      processToken(idToken, 'URL');
     }
+    
+    // 3. Listen for native Android Google Sign-In token events
+    const handleNativeSignIn = (event: CustomEvent) => {
+      const token = event.detail?.credential;
+      if (token) {
+        processToken(token, 'event');
+      } else {
+        console.error('❌ [Global] Token missing in event detail:', event.detail);
+      }
+    };
+    
+    window.addEventListener('google-signin-token', handleNativeSignIn as EventListener);
+    console.log('✅ [Global] Event listener registered for google-signin-token');
+    
+    // 4. Check window object (fallback)
+    const checkWindowToken = () => {
+      const storedToken = (window as any).__pendingGoogleToken;
+      if (storedToken) {
+        console.log('✅ [Global] Found token in window object');
+        delete (window as any).__pendingGoogleToken;
+        processToken(storedToken, 'window object');
+        return true;
+      }
+      return false;
+    };
+    
+    // Set up polling for localStorage and window object
+    const tokenCheckInterval = setInterval(() => {
+      checkLocalStorageToken() || checkWindowToken();
+    }, 500);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('google-signin-token', handleNativeSignIn as EventListener);
+      clearInterval(tokenCheckInterval);
+    };
   }, [signInWithGoogle, setShowAuthModal]);
   
   return null; // This component doesn't render anything

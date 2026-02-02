@@ -13,9 +13,18 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.browser.customtabs.CustomTabsCallback
 import androidx.lifecycle.lifecycleScope
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.ActivityResultLauncher
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.tasks.Task
+import com.google.gson.Gson
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -31,11 +40,18 @@ class MainActivity : AppCompatActivity() {
     private var interstitialAd: InterstitialAd? = null
     private var sessionCount = 0
     private var isPageLoaded = false
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private lateinit var signInLauncher: ActivityResultLauncher<android.content.Intent>
 
     companion object {
-        private const val WEB_APP_URL = "https://cool-tartufo-a76644.netlify.app/"
+        // TEMPORARY: Using local server for testing (change back to Netlify URL when credits are restored)
+        private const val WEB_APP_URL = "http://10.11.225.230:3000/"
+        // Original Netlify URL (uncomment when ready):
+        // private const val WEB_APP_URL = "https://cool-tartufo-a76644.netlify.app/"
         private const val PREFS_NAME = "NuuzPrefs"
         private const val PREF_SESSION_COUNT = "session_count"
+        private const val RC_SIGN_IN = 9001
+        private const val GOOGLE_CLIENT_ID = "91768461103-ss664383b8aaoq2l5kjbud3c4m17j7md.apps.googleusercontent.com"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,7 +83,11 @@ class MainActivity : AppCompatActivity() {
 
         setupWebView()
         
+        // Setup native Google Sign-In (preferred method for WebView)
+        setupGoogleSignIn()
+        
         // Handle OAuth callback from deep link (when Google redirects back)
+        // NOTE: This is now a fallback - native sign-in is preferred
         handleOAuthCallback(intent)
         
         // DISABLED: Interstitial ads not loaded - using AdSense in-feed only
@@ -78,6 +98,406 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         // Handle OAuth callback when app is already running
         handleOAuthCallback(intent)
+    }
+    
+    /**
+     * Setup native Google Sign-In SDK
+     * This provides a better experience than OAuth redirects in WebView
+     */
+    private fun setupGoogleSignIn() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(GOOGLE_CLIENT_ID)
+            .requestEmail()
+            .requestProfile()
+            .build()
+        
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+        
+        // Register Activity Result Launcher (modern API - replaces deprecated onActivityResult)
+        signInLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            android.util.Log.d("GoogleSignIn", "========== Activity Result Received ==========")
+            android.util.Log.d("GoogleSignIn", "Result code: ${result.resultCode} (RESULT_OK: ${android.app.Activity.RESULT_OK})")
+            
+            if (result.resultCode == android.app.Activity.RESULT_OK && result.data != null) {
+                android.util.Log.d("GoogleSignIn", "✅ Result OK, processing sign-in...")
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                handleGoogleSignInResult(task)
+            } else {
+                android.util.Log.w("GoogleSignIn", "⚠️ Sign-in cancelled or failed (code: ${result.resultCode})")
+                webView.post {
+                    val script = """
+                        (function() {
+                            console.log('⚠️ [Android] Sign-in cancelled or failed');
+                        })();
+                    """.trimIndent()
+                    webView.evaluateJavascript(script, null)
+                }
+            }
+        }
+        
+        android.util.Log.d("GoogleSignIn", "✅ Native Google Sign-In initialized with Activity Result API")
+    }
+    
+    /**
+     * Trigger native Google Sign-In flow
+     * Called from WebAppInterface when user clicks sign-in button in WebView
+     */
+    fun triggerNativeGoogleSignIn() {
+        android.util.Log.d("GoogleSignIn", "🔐 ========== NATIVE SIGN-IN TRIGGERED ==========")
+        android.util.Log.d("GoogleSignIn", "🔐 googleSignInClient initialized: ${::googleSignInClient.isInitialized}")
+        android.util.Log.d("GoogleSignIn", "🔐 signInLauncher initialized: ${::signInLauncher.isInitialized}")
+        
+        try {
+            val signInIntent = googleSignInClient.signInIntent
+            android.util.Log.d("GoogleSignIn", "🔐 Sign-in intent created, launching with Activity Result API...")
+            signInLauncher.launch(signInIntent)
+            android.util.Log.d("GoogleSignIn", "✅ Sign-in intent launched successfully")
+        } catch (e: Exception) {
+            android.util.Log.e("GoogleSignIn", "❌ Error launching sign-in: ${e.message}")
+            e.printStackTrace()
+            
+            // Notify WebView of error
+            webView.post {
+                val script = """
+                    (function() {
+                        console.error('❌ [Android] Failed to start native sign-in: ${e.message}');
+                        alert('Failed to start sign-in: ${e.message}');
+                    })();
+                """.trimIndent()
+                webView.evaluateJavascript(script, null)
+            }
+        }
+    }
+    
+    /**
+     * Process the Google Sign-In result and pass token to WebView
+     */
+    private fun handleGoogleSignInResult(completedTask: Task<GoogleSignInAccount>) {
+        android.util.Log.d("GoogleSignIn", "========== handleGoogleSignInResult CALLED ==========")
+        android.util.Log.d("GoogleSignIn", "Task is complete: ${completedTask.isComplete}")
+        android.util.Log.d("GoogleSignIn", "Task is successful: ${completedTask.isSuccessful}")
+        
+        // Check if task is already complete - process immediately if so
+        if (completedTask.isComplete) {
+            android.util.Log.d("GoogleSignIn", "Task is already complete, processing immediately")
+            processSignInResult(completedTask)
+        } else {
+            android.util.Log.d("GoogleSignIn", "Task not complete, adding listener")
+            completedTask.addOnCompleteListener { task ->
+                processSignInResult(task)
+            }
+        }
+    }
+    
+    /**
+     * Process the sign-in result and extract token
+     */
+    private fun processSignInResult(task: Task<GoogleSignInAccount>) {
+        android.util.Log.d("GoogleSignIn", "========== Processing Sign-In Result ==========")
+        
+        try {
+            if (task.isSuccessful) {
+                val account = task.result
+                val idToken = account.idToken
+                
+                if (idToken == null) {
+                    android.util.Log.e("GoogleSignIn", "❌ ID token is null")
+                    showErrorToWebView("No token received")
+                    return
+                }
+                
+                android.util.Log.d("GoogleSignIn", "✅ Token received, length: ${idToken.length}")
+                android.util.Log.d("GoogleSignIn", "✅ Account: ${account.email}")
+                android.util.Log.d("GoogleSignIn", "Token preview: ${idToken.take(50)}...")
+                
+                // Pass token directly to WebView
+                passTokenToWebView(idToken)
+                
+            } else {
+                val exception = task.exception
+                android.util.Log.e("GoogleSignIn", "❌ Task failed: ${exception?.message}")
+                exception?.printStackTrace()
+                
+                if (exception is ApiException) {
+                    when (exception.statusCode) {
+                        12501 -> android.util.Log.d("GoogleSignIn", "User cancelled sign-in")
+                        else -> showErrorToWebView("Sign-in failed: ${exception.message}")
+                    }
+                } else {
+                    showErrorToWebView("Sign-in failed: ${exception?.message ?: "Unknown error"}")
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("GoogleSignIn", "❌ Unexpected error: ${e.message}")
+            e.printStackTrace()
+            showErrorToWebView("Unexpected error: ${e.message}")
+        }
+    }
+    
+    /**
+     * Pass token to WebView using multiple methods for reliability
+     */
+    private fun passTokenToWebView(token: String) {
+        android.util.Log.d("GoogleSignIn", "Passing token to WebView...")
+        
+        // Use Gson to properly escape the token as JSON string
+        val gson = Gson()
+        val jsonToken = gson.toJson(token)
+        
+        val script = """
+            (function() {
+                console.log('✅ [Android] Token received from native sign-in');
+                const token = $jsonToken;
+                console.log('✅ [Android] Token length: ' + token.length);
+                console.log('✅ [Android] Token preview: ' + token.substring(0, 50) + '...');
+                
+                // Store in localStorage immediately as backup
+                localStorage.setItem('__google_signin_token', token);
+                console.log('✅ [Android] Token stored in localStorage');
+                
+                // Method 1: Try direct call first
+                if (typeof window.signInWithGoogle === 'function') {
+                    console.log('✅ [Android] Method 1: Calling window.signInWithGoogle directly');
+                    try {
+                        const promise = window.signInWithGoogle(token);
+                        if (promise && typeof promise.then === 'function') {
+                            promise.then(function() {
+                                console.log('✅ [Android] signInWithGoogle promise resolved');
+                                localStorage.removeItem('__google_signin_token');
+                            }).catch(function(err) {
+                                console.error('❌ [Android] Direct call failed:', err);
+                                triggerTokenEvent(token);
+                            });
+                        } else {
+                            triggerTokenEvent(token);
+                        }
+                    } catch (err) {
+                        console.error('❌ [Android] Error calling signInWithGoogle:', err);
+                        triggerTokenEvent(token);
+                    }
+                } else {
+                    console.log('⚠️ [Android] window.signInWithGoogle not available, using event');
+                    triggerTokenEvent(token);
+                }
+                
+                function triggerTokenEvent(token) {
+                    console.log('✅ [Android] Method 2: Dispatching google-signin-token event');
+                    const event = new CustomEvent('google-signin-token', {
+                        detail: { credential: token },
+                        bubbles: true
+                    });
+                    window.dispatchEvent(event);
+                    console.log('✅ [Android] Event dispatched');
+                }
+            })();
+        """.trimIndent()
+        
+        webView.post {
+            webView.evaluateJavascript(script) { result ->
+                android.util.Log.d("GoogleSignIn", "Script executed, result: $result")
+            }
+        }
+    }
+    
+    /**
+     * Show error message to WebView
+     */
+    private fun showErrorToWebView(message: String) {
+        val escaped = message.replace("'", "\\'").replace("\"", "\\\"")
+        val script = """
+            (function() {
+                console.error('❌ [Android] $escaped');
+                alert('Sign-in failed: $escaped');
+            })();
+        """.trimIndent()
+        
+        webView.post {
+            webView.evaluateJavascript(script, null)
+        }
+    }
+    
+    // Legacy method - kept for backward compatibility but not used
+    @Deprecated("Use Activity Result API instead")
+    private fun handleGoogleSignInResultLegacy(completedTask: Task<GoogleSignInAccount>) {
+        // This method is no longer used - kept for reference only
+        completedTask.addOnCompleteListener { task ->
+            android.util.Log.d("GoogleSignIn", "========== Task completed ==========")
+            android.util.Log.d("GoogleSignIn", "Task successful: ${task.isSuccessful}")
+            
+            try {
+                if (task.isSuccessful) {
+                    val account = task.result
+                    android.util.Log.d("GoogleSignIn", "✅ Account retrieved: ${account.email}")
+                    val idToken = account.idToken
+            
+                    if (idToken == null) {
+                        android.util.Log.e("GoogleSignIn", "❌ ID token is null")
+                        webView.post {
+                            val script = """
+                                (function() {
+                                    console.error('❌ [Android] Google Sign-In failed: ID token is null');
+                                    alert('Sign-in failed: No token received');
+                                })();
+                            """.trimIndent()
+                            webView.evaluateJavascript(script, null)
+                        }
+                        return@addOnCompleteListener
+                    }
+                    
+                    android.util.Log.d("GoogleSignIn", "✅ Sign-in successful, token received (length: ${idToken.length})")
+                    android.util.Log.d("GoogleSignIn", "Token preview: ${idToken.take(50)}...")
+                    
+                    // Check WebView state
+                    android.util.Log.d("GoogleSignIn", "WebView URL: ${webView.url}")
+                    android.util.Log.d("GoogleSignIn", "WebView is attached: ${webView.isAttachedToWindow}")
+                    
+                    // CRITICAL: Pass token to WebView using base64 encoding to avoid JavaScript injection issues
+                    // JWT tokens contain special characters that can break when injected directly
+                    val base64Token = android.util.Base64.encodeToString(
+                        idToken.toByteArray(Charsets.UTF_8),
+                        android.util.Base64.NO_WRAP
+                    )
+                    
+                    android.util.Log.d("GoogleSignIn", "Token encoded to base64, length: ${base64Token.length}")
+                    
+                    // Ensure WebView is ready before injecting script
+                    webView.post {
+                        // Wait a bit to ensure WebView JavaScript context is ready
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            val script = """
+                                (function() {
+                                    console.log('✅ [Android] Native Google Sign-In successful');
+                                    console.log('✅ [Android] Processing token...');
+                                    
+                                    try {
+                                        // Decode base64 token
+                                        const base64Token = '$base64Token';
+                                        const token = atob(base64Token);
+                                        console.log('✅ [Android] Token decoded, length: ' + token.length);
+                                        console.log('✅ [Android] Token preview: ' + token.substring(0, 50) + '...');
+                                        
+                                        // Multiple fallback methods to ensure token is processed
+                                        
+                                        // Method 1: Try global function
+                                        if (typeof window.signInWithGoogle === 'function') {
+                                            console.log('✅ [Android] Method 1: Calling window.signInWithGoogle');
+                                            const promise = window.signInWithGoogle(token);
+                                            if (promise && typeof promise.then === 'function') {
+                                                promise.then(function() {
+                                                    console.log('✅ [Android] signInWithGoogle promise resolved');
+                                                }).catch(function(err) {
+                                                    console.error('❌ [Android] signInWithGoogle promise rejected:', err);
+                                                    // Fall through to event method
+                                                    dispatchTokenEvent(token);
+                                                });
+                                            } else {
+                                                // Not a promise, try event method
+                                                dispatchTokenEvent(token);
+                                            }
+                                        } else {
+                                            console.log('⚠️ [Android] window.signInWithGoogle not available, using event method');
+                                            dispatchTokenEvent(token);
+                                        }
+                                        
+                                        function dispatchTokenEvent(token) {
+                                            console.log('✅ [Android] Method 2: Dispatching google-signin-token event');
+                                            
+                                            // Store token as fallback
+                                            window.__pendingGoogleToken = token;
+                                            console.log('✅ [Android] Token stored in window.__pendingGoogleToken');
+                                            
+                                            // Dispatch event
+                                            const event = new CustomEvent('google-signin-token', { 
+                                                detail: { credential: token },
+                                                bubbles: true,
+                                                cancelable: true
+                                            });
+                                            const dispatched = window.dispatchEvent(event);
+                                            console.log('✅ [Android] Event dispatched, result: ' + dispatched);
+                                            
+                                            // Also try direct call to auth service if available
+                                            setTimeout(function() {
+                                                if (window.__authContext && window.__authContext.signInWithGoogle) {
+                                                    console.log('✅ [Android] Method 3: Using __authContext');
+                                                    window.__authContext.signInWithGoogle(token);
+                                                }
+                                            }, 100);
+                                            
+                                            // Final fallback: try again after a delay
+                                            setTimeout(function() {
+                                                if (window.__pendingGoogleToken === token) {
+                                                    console.log('⚠️ [Android] Token still pending, retrying event dispatch');
+                                                    window.dispatchEvent(new CustomEvent('google-signin-token', { 
+                                                        detail: { credential: token },
+                                                        bubbles: true
+                                                    }));
+                                                }
+                                            }, 1000);
+                                        }
+                                    } catch (err) {
+                                        console.error('❌ [Android] Error processing token:', err);
+                                        alert('Error processing sign-in: ' + err.message);
+                                    }
+                                })();
+                            """.trimIndent()
+                            
+                            android.util.Log.d("GoogleSignIn", "Injecting script into WebView...")
+                            webView.evaluateJavascript(script) { result ->
+                                android.util.Log.d("GoogleSignIn", "Script executed, result: $result")
+                                if (result == null || result == "null") {
+                                    android.util.Log.w("GoogleSignIn", "⚠️ Script returned null - WebView might not be ready")
+                                }
+                            }
+                        }, 300) // Wait 300ms to ensure WebView is ready
+                    }
+                } else {
+                    // Task failed
+                    val exception = task.exception
+                    android.util.Log.e("GoogleSignIn", "❌ Task failed: ${exception?.message}")
+                    exception?.printStackTrace()
+                    
+                    if (exception is ApiException) {
+                        handleSignInError(exception)
+                    } else {
+                        handleSignInError(null, exception?.message ?: "Unknown error")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("GoogleSignIn", "❌ Unexpected error in onComplete: ${e.message}")
+                e.printStackTrace()
+                handleSignInError(null, e.message ?: "Unexpected error")
+            }
+        }
+    }
+    
+    private fun handleSignInError(apiException: ApiException?, customMessage: String? = null) {
+        val errorMessage = if (apiException != null) {
+            when (apiException.statusCode) {
+                10 -> "Developer error - check configuration"
+                12501 -> "Sign-in cancelled by user"
+                else -> apiException.message ?: "Unknown error (code: ${apiException.statusCode})"
+            }
+        } else {
+            customMessage ?: "Unknown error"
+        }
+        
+        android.util.Log.e("GoogleSignIn", "❌ Sign-in failed: $errorMessage")
+        
+        webView.post {
+            val escapedError = errorMessage.replace("'", "\\'").replace("\"", "\\\"")
+            val script = """
+                (function() {
+                    console.error('❌ [Android] Google Sign-In failed: $escapedError');
+                    // Don't show alert for user cancellation
+                    if ('$escapedError'.indexOf('cancelled') === -1) {
+                        alert('Sign-in failed: $escapedError');
+                    }
+                })();
+            """.trimIndent()
+            webView.evaluateJavascript(script, null)
+        }
     }
     
     private fun handleOAuthCallback(intent: android.content.Intent?) {
@@ -171,9 +591,11 @@ class MainActivity : AppCompatActivity() {
                     // Wait for React to mount, then inject other scripts
                     lifecycleScope.launch {
                         delay(1500) // Wait for React to mount
-                        // Inject JavaScript to detect premium status and scroll
-                        injectScrollDetectionScript()
-                        detectPremiumStatus()
+                        // Inject diagnostic script to verify AndroidBridge
+                        injectAndroidBridgeDiagnostic()
+                // Inject JavaScript to detect premium status and scroll
+                injectScrollDetectionScript()
+                detectPremiumStatus()
                     }
                 }
             }
@@ -265,15 +687,17 @@ class MainActivity : AppCompatActivity() {
                         // Use a light color for toolbar
                         builder.setToolbarColor(0xFFFFFFFF.toInt()) // White
                         
-                        // Add callback to detect when redirect happens
                         val customTabsIntent = builder.build()
                         customTabsIntent.intent.putExtra(
                             CustomTabsIntent.EXTRA_ENABLE_URLBAR_HIDING,
                             true
                         )
                         
-                        // Launch with callback to detect navigation
+                        // Launch Custom Tabs
+                        // When Google redirects to our domain, the deep link should trigger automatically
+                        // If it doesn't, onResume() will catch it when user returns to app
                         customTabsIntent.launchUrl(this@MainActivity, Uri.parse(url))
+                        
                         return true  // We handled it - don't let WebView handle it
                     } catch (e: Exception) {
                         android.util.Log.e("WebView", "❌ Failed to open Custom Tab: ${e.message}")
@@ -374,6 +798,42 @@ class MainActivity : AppCompatActivity() {
         val cacheBuster = System.currentTimeMillis()
         val urlWithCacheBuster = "$WEB_APP_URL?v=$cacheBuster"
         webView.loadUrl(urlWithCacheBuster)
+    }
+
+    private fun injectAndroidBridgeDiagnostic() {
+        val script = """
+            (function() {
+                console.log('🔍 [Android] Checking AndroidBridge availability...');
+                console.log('🔍 [Android] AndroidBridge exists:', typeof AndroidBridge !== 'undefined');
+                if (typeof AndroidBridge !== 'undefined') {
+                    console.log('🔍 [Android] AndroidBridge object:', AndroidBridge);
+                    console.log('🔍 [Android] AndroidBridge.triggerGoogleSignIn exists:', typeof AndroidBridge.triggerGoogleSignIn === 'function');
+                    console.log('🔍 [Android] AndroidBridge methods:', Object.getOwnPropertyNames(AndroidBridge));
+                } else {
+                    console.error('❌ [Android] AndroidBridge is NOT available!');
+                    console.error('❌ [Android] This means native sign-in will not work.');
+                }
+                
+                // Expose a test function
+                window.testAndroidBridge = function() {
+                    if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.triggerGoogleSignIn === 'function') {
+                        console.log('✅ [Android] Testing AndroidBridge.triggerGoogleSignIn()...');
+                        try {
+                            AndroidBridge.triggerGoogleSignIn();
+                            console.log('✅ [Android] triggerGoogleSignIn() called successfully');
+                        } catch (err) {
+                            console.error('❌ [Android] Error calling triggerGoogleSignIn():', err);
+                        }
+                    } else {
+                        console.error('❌ [Android] AndroidBridge.triggerGoogleSignIn not available');
+                    }
+                };
+            })();
+        """.trimIndent()
+        
+        webView.evaluateJavascript(script) { result ->
+            android.util.Log.d("WebView", "AndroidBridge diagnostic injected: $result")
+        }
     }
 
     private fun injectScrollDetectionScript() {
@@ -784,8 +1244,8 @@ class MainActivity : AppCompatActivity() {
                                 '&access_type=offline' +
                                 '&prompt=select_account';
                             window.location.href = googleAuthUrl;
-                        }
-                    } else {
+            }
+        } else {
                         // SDK not loaded - use OAuth with correct redirect URI
                         console.log('⚠️ [Android] SDK not available, using OAuth redirect');
                         var correctRedirectUri = encodeURIComponent('$redirectUri');
@@ -820,8 +1280,8 @@ class MainActivity : AppCompatActivity() {
         // DISABLED: AdMob banner ads removed per client request
         // Client wants only AdSense in-feed ads (inline with posts), not banner ads
         // Banner containers hidden to provide clean experience
-        adContainerTop.visibility = View.GONE
-        adContainerBottom.visibility = View.GONE
+            adContainerTop.visibility = View.GONE
+            adContainerBottom.visibility = View.GONE
 
         if (!isPremium) {
             // AdMob banners disabled - using AdSense in-feed ads only
@@ -917,5 +1377,33 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         webView.onResume()
         adManager?.resume()
+        
+        // CRITICAL: Check for OAuth callback when app resumes (e.g., after Custom Tabs closes)
+        // This handles the case where Google redirects but deep link doesn't trigger automatically
+        val intent = this.intent
+        if (intent != null && intent.data != null) {
+            val data = intent.data?.toString()
+            if (data != null && data.contains("netlify.app") && 
+                (data.contains("id_token=") || data.contains("#id_token="))) {
+                android.util.Log.d("WebView", "✅ OAuth callback detected in onResume via intent")
+                handleOAuthCallback(intent)
+            }
+        }
+        
+        // Also check WebView's current URL in case redirect happened there
+        try {
+            val currentUrl = webView.url
+            if (currentUrl != null && currentUrl.contains("netlify.app") && 
+                (currentUrl.contains("id_token=") || currentUrl.contains("#id_token="))) {
+                android.util.Log.d("WebView", "✅ OAuth callback detected in onResume via WebView URL")
+                // Create an intent-like structure to pass to handler
+                val fakeIntent = android.content.Intent().apply {
+                    data = Uri.parse(currentUrl)
+                }
+                handleOAuthCallback(fakeIntent)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("WebView", "Error checking WebView URL in onResume: ${e.message}")
+        }
     }
 }

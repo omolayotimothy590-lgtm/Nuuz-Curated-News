@@ -79,6 +79,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.10.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
+    // Activity Result API
+    implementation 'androidx.activity:activity-ktx:1.8.2'
+
     // Lifecycle components
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
@@ -88,6 +91,9 @@ dependencies {
 
     // Custom Tabs for OAuth (Google Sign-In)
     implementation 'androidx.browser:browser:1.5.0'
+
+    // Google Sign-In SDK (Native)
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
 
     // Google AdMob
     implementation 'com.google.android.gms:play-services-ads:22.5.0'
